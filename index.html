@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Capturador de Datos – PRO DEFINITIVO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f1f5f9;color:#0f172a}
+.wrap{max-width:480px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 10px 25px rgba(0,0,0,.08)}
+h2{text-align:center;margin:0 0 10px;font-size:18px}
+input,button{width:100%;padding:14px;margin-top:10px;border-radius:14px;border:1px solid #e2e8f0;font-size:15px}
+button{border:none;font-weight:700}
+.primary{background:#0ea5e9;color:#fff}
+.secondary{background:#64748b;color:#fff}
+.danger{background:#ef4444;color:#fff}
+.success{background:#22c55e;color:#fff}
+.warn{background:#f59e0b;color:#fff}
+.qrbtn{width:64px;background:#22c55e;color:#fff;font-size:22px}
+.clearbtn{width:64px;background:#f59e0b;color:#fff;font-size:18px}
+.field{display:flex;gap:8px}
+.field input{flex:1}
+#scannerBox{display:none;position:relative;margin-top:12px;border-radius:18px;overflow:hidden;background:#000}
+.scan-frame{position:absolute;inset:0;border:2px solid rgba(239,68,68,.7)}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:red;animation:scan 2s linear infinite}
+@keyframes scan{0%{top:0}50%{top:95%}100%{top:0}}
+.scanner-controls{position:absolute;bottom:10px;left:10px;right:10px;display:flex;gap:10px}
+.ctrl{flex:1;border-radius:12px;padding:10px}
+.table{margin-top:14px}
+.row{background:#f8fafc;padding:12px;border-radius:12px;margin-top:8px;cursor:pointer}
+.row:hover{background:#eef2ff}
+.row.editing{border:2px solid #0ea5e9;background:#e0f2fe}
+.small{font-size:12px;color:#475569}
+.preview{border:2px dashed #0ea5e9}
+.total{margin-top:10px;padding:12px;border-radius:12px;background:#0f172a;color:#fff;text-align:center;font-weight:700}
+.note{font-size:12px;color:#64748b;margin-top:4px}
+</style>
+</head>
+
+<body>
+<audio id="beep"><source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+
+<div class="wrap">
+ <div class="card">
+  <h2>📋 Capturador PRO</h2>
+
+  <input id="operador" placeholder="Nombre del operador" oninput="previewIngreso()">
+
+  <div class="field">
+   <input id="ubicacion" placeholder="Ubicación (opcional)" oninput="previewIngreso()">
+   <button class="qrbtn" onclick="scanUbicacion()">📍</button>
+   <button class="clearbtn" onclick="limpiarUbicacion()">🧹</button>
+  </div>
+  <div class="note">ℹ️ La ubicación es opcional</div>
+
+  <div class="field">
+   <input id="codigo" placeholder="Código" oninput="buscarDescripcion();previewIngreso()">
+   <button class="qrbtn" onclick="scanCodigo()">📷</button>
+  </div>
+
+  <input id="descripcion" placeholder="Descripción" oninput="previewIngreso()">
+  <input id="cantidad" type="number" value="1" oninput="previewIngreso()">
+
+  <div class="table" id="preview"></div>
+
+  <button class="secondary" onclick="toggleScanner()">👁 Mostrar / Ocultar Scanner</button>
+
+  <div id="scannerBox">
+   <div class="scan-frame"></div>
+   <div class="scan-line"></div>
+   <div class="scanner-controls">
+    <button class="ctrl success" onclick="toggleTorch()">🔦 Linterna</button>
+    <button class="ctrl danger" onclick="cerrarScanner()">❌ Cerrar</button>
+   </div>
+  </div>
+
+  <button class="primary" onclick="ingresar()">💾 Guardar</button>
+  <button class="warn" onclick="cancelarEdicion()">↩️ Cancelar edición</button>
+
+  <div class="table" id="tabla"></div>
+  <div class="total" id="totalizador">Total unidades: 0</div>
+
+  <button class="success" onclick="exportarExcel()">📊 Exportar Excel</button>
+  <button class="secondary" onclick="exportarPDF()">📄 Exportar PDF</button>
+  <button class="danger" onclick="finalizar()">❌ Finalizar</button>
+ </div>
+</div>
+
+<script>
+const API="https://script.google.com/macros/s/AKfycbwOx6mRhIPWQLXXeH5s_Fsw3A6A_dZv-ATUxQpybSR5jsoaH34i8c62eIhipmNy--ug/exec";
+let productos=[],capturas=JSON.parse(localStorage.getItem("capturas")||"[]");
+let scanner=null,modo=null,torch=false,editIndex=-1;
+
+operador.value=localStorage.getItem("operador")||"";
+ubicacion.value=localStorage.getItem("ubicacion")||"";
+
+fetch(API).then(r=>r.json()).then(d=>{productos=d;localStorage.setItem("productos",JSON.stringify(d));})
+.catch(()=>{const c=localStorage.getItem("productos");if(c)productos=JSON.parse(c);});
+
+render();
+
+function limpiarUbicacion(){
+ ubicacion.value="";
+ localStorage.removeItem("ubicacion");
+ previewIngreso();
+}
+
+function buscarDescripcion(){
+ const c=codigo.value.trim().toLowerCase();
+ if(!c){descripcion.value="";return;}
+ const p=productos.find(x=>String(x.CODIGO).toLowerCase()===c);
+ if(p)descripcion.value=p.DESCRIPCION||"";
+}
+
+function previewIngreso(){
+ if(!codigo.value && !descripcion.value){
+  preview.innerHTML="";
+  return;
+ }
+ preview.innerHTML=`
+  <div class="row preview">
+   <b>🕒 PREVISUALIZANDO</b><br><br>
+   <b>${codigo.value||"-"}</b> – ${descripcion.value||"-"}<br>
+   <span class="small">
+    ${(ubicacion.value||"SIN UBICACIÓN")} | ${(operador.value||"-")} | Cant: ${cantidad.value}
+   </span>
+  </div>`;
+}
+
+function scanCodigo(){modo="codigo";abrirScanner();}
+function scanUbicacion(){modo="ubicacion";abrirScanner();}
+function toggleScanner(){scannerBox.style.display==="none"?abrirScanner():cerrarScanner();}
+
+function abrirScanner(){
+ if(scanner)return;
+ scannerBox.style.display="block";
+ scanner=new Html5Qrcode("scannerBox");
+ scanner.start({facingMode:"environment"},{fps:12,qrbox:260},txt=>{
+  beep.play();navigator.vibrate?.(200);
+  if(modo==="codigo"){codigo.value=txt;buscarDescripcion();previewIngreso();}
+  if(modo==="ubicacion"){ubicacion.value=txt;localStorage.setItem("ubicacion",txt);previewIngreso();}
+  cerrarScanner();
+ });
+}
+function cerrarScanner(){
+ if(!scanner)return;
+ scanner.stop().then(()=>{scanner.clear();scanner=null;scannerBox.style.display="none";});
+}
+function toggleTorch(){torch=!torch;scanner?.applyVideoConstraints({advanced:[{torch:torch}]}).catch(()=>{});}
+
+function ingresar(){
+ localStorage.setItem("operador",operador.value);
+ if(ubicacion.value) localStorage.setItem("ubicacion",ubicacion.value);
+ else localStorage.removeItem("ubicacion");
+
+ const d={
+  Fecha:new Date().toLocaleString(),
+  Operador:operador.value || "",
+  Ubicación: ubicacion.value || "SIN UBICACIÓN",
+  Código:codigo.value,
+  Descripción:descripcion.value,
+  Cantidad:Number(cantidad.value)
+ };
+
+ if(editIndex>=0){
+  capturas[editIndex]=d;
+  editIndex=-1;
+ }else{
+  capturas.push(d);
+ }
+
+ localStorage.setItem("capturas",JSON.stringify(capturas));
+ limpiar();render();
+}
+
+function cargarParaEditar(i){
+ const c=capturas[i];
+ operador.value=c.Operador;
+ ubicacion.value=c.Ubicación==="SIN UBICACIÓN"?"":c.Ubicación;
+ codigo.value=c.Código;
+ descripcion.value=c.Descripción;
+ cantidad.value=c.Cantidad;
+ editIndex=i;
+ previewIngreso();
+ render();
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function cancelarEdicion(){
+ editIndex=-1;
+ limpiar();
+ render();
+}
+
+function limpiar(){
+ codigo.value="";
+ descripcion.value="";
+ cantidad.value=1;
+ preview.innerHTML="";
+}
+
+function render(){
+ tabla.innerHTML="";
+ let total=0;
+ capturas.forEach((c,i)=>{
+  total+=Number(c.Cantidad)||0;
+  tabla.innerHTML+=`
+   <div class="row ${editIndex===i?"editing":""}" onclick="cargarParaEditar(${i})">
+    <b>${c.Código}</b> – ${c.Descripción}<br>
+    <span class="small">
+     ${c.Ubicación} | ${c.Operador} | ${c.Fecha} | Cant: ${c.Cantidad}
+    </span>
+   </div>`;
+ });
+ totalizador.innerText="Total unidades: "+total;
+}
+
+async function exportarExcel(){
+ if(!capturas.length)return alert("Sin datos");
+ const ws=XLSX.utils.json_to_sheet(capturas);
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,"Captura");
+ const fileName="captura_pro.xlsx";
+
+ if(window.showDirectoryPicker){
+  try{
+   const root=await window.showDirectoryPicker();
+   const dir=await root.getDirectoryHandle("inventariosistema",{create:true});
+   const file=await dir.getFileHandle(fileName,{create:true});
+   const writable=await file.createWritable();
+   const data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+   await writable.write(data);
+   await writable.close();
+   alert("Archivo guardado en inventariosistema");
+   return;
+  }catch(e){}
+ }
+ XLSX.writeFile(wb,fileName);
+}
+
+function exportarPDF(){
+ if(!capturas.length)return alert("Sin datos");
+ const w=window.open("");let h="<h3>Reporte</h3><table border=1 cellpadding=5><tr>";
+ Object.keys(capturas[0]).forEach(k=>h+="<th>"+k+"</th>");
+ h+="</tr>";
+ capturas.forEach(r=>{h+="<tr>";Object.values(r).forEach(v=>h+="<td>"+v+"</td>");h+="</tr>";});
+ h+="</table>";w.document.write(h);w.print();
+}
+
+function finalizar(){
+ if(!capturas.length)return;
+ exportarExcel();
+ setTimeout(()=>{
+  localStorage.removeItem("ubicacion");
+  localStorage.removeItem("operador");
+  localStorage.removeItem("capturas");
+  location.reload();
+ },800);
+}
+</script>
+</body>
+</html>
