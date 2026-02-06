@@ -271,7 +271,19 @@ function abrirScanner(){
  if(scanner) return;
  scannerBox.style.display="block";
  scanner=new Html5Qrcode("scannerBox");
- scanner.start({facingMode:"environment"},{fps:12,qrbox:260},txt=>{
+ scanner.start(
+  {facingMode:"environment"},
+  {
+    fps:12,
+    qrbox:260,
+    formatsToSupport:[
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13
+    ]
+  },
+  txt=>{
   beep.play();navigator.vibrate?.(200);
   if(modo==="codigo"){codigo.value=txt;buscarDescripcion();previewIngreso();}
   if(modo==="ubicacion"){ubicacion.value=txt;localStorage.setItem("ubicacion",txt);previewIngreso();}
@@ -354,7 +366,11 @@ function render(){
 async function finalizar(){
  /* EXPORTA EXCEL Y DEJA LISTO PARA NUEVA CAPTURA */
  if(!capturas.length) return;
- const ws=XLSX.utils.json_to_sheet(capturas);
+ const capturasExcel = capturas.map(r => ({
+  ...r,
+  Código: "'" + String(r.Código)
+}));
+const ws = XLSX.utils.json_to_sheet(capturasExcel);
  const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,ws,"Captura");
  const data=XLSX.write(wb,{bookType:"xlsx",type:"array"});
