@@ -14,6 +14,23 @@ function eliminarItem(i){
  render();
 }
 
+
+function exportarPDF(){
+ if(!capturas.length) return alert("Sin datos");
+ const w = window.open("");
+ let h = "<h3>Reporte de Captura</h3><table border='1' cellpadding='5' cellspacing='0'><tr>";
+ Object.keys(capturas[0]).forEach(k=>h+="<th>"+k+"</th>");
+ h+="</tr>";
+ capturas.forEach(r=>{
+  h+="<tr>";
+  Object.values(r).forEach(v=>h+="<td>"+v+"</td>");
+  h+="</tr>";
+ });
+ h+="</table>";
+ w.document.write(h);
+ w.print();
+}
+
 </script>
 <script src="https://unpkg.com/html5-qrcode">
 function eliminarItem(i){
@@ -22,6 +39,23 @@ function eliminarItem(i){
  localStorage.setItem("capturas",JSON.stringify(capturas));
  if(editIndex===i) editIndex=-1;
  render();
+}
+
+
+function exportarPDF(){
+ if(!capturas.length) return alert("Sin datos");
+ const w = window.open("");
+ let h = "<h3>Reporte de Captura</h3><table border='1' cellpadding='5' cellspacing='0'><tr>";
+ Object.keys(capturas[0]).forEach(k=>h+="<th>"+k+"</th>");
+ h+="</tr>";
+ capturas.forEach(r=>{
+  h+="<tr>";
+  Object.values(r).forEach(v=>h+="<td>"+v+"</td>");
+  h+="</tr>";
+ });
+ h+="</table>";
+ w.document.write(h);
+ w.print();
 }
 
 </script>
@@ -142,10 +176,6 @@ button{border:none;font-weight:700}
 
 <div id="preview"></div>
 
-<div class="field">
- <button class="secondary" onclick="toggleScanner()">📷 Cámara</button>
- 
-</div>
 
 <div id="scannerBox">
 <div class="scan-frame"></div>
@@ -157,12 +187,17 @@ button{border:none;font-weight:700}
 </div>
 
 <button class="primary" onclick="ingresar()">💾 Guardar</button>
+
+<div class="field">
+ <button class="secondary" onclick="toggleScanner()">📷 Cámara</button>
+</div>
 <button class="warn" onclick="cancelarEdicion()">↩️ Cancelar edición</button>
 
 <div id="tabla"></div>
 <div class="total" id="totalizador">Total unidades: 0</div>
 
 <button class="success" onclick="finalizar()">📊 Finalizar y abrir Excel</button>
+<button class="secondary" onclick="exportarPDF()">📄 Descargar PDF</button>
 
 </div>
 
@@ -253,6 +288,10 @@ function toggleTorch(){
 }
 
 function ingresar(){
+ if(!codigo.value.trim()){
+  alert("❌ Los datos no se pueden guardar. Digite un código correcto.");
+  return;
+ }
  localStorage.setItem("operador",operador.value);
  if(ubicacion.value) localStorage.setItem("ubicacion",ubicacion.value);
  else localStorage.removeItem("ubicacion");
@@ -383,6 +422,23 @@ function eliminarItem(i){
  localStorage.setItem("capturas",JSON.stringify(capturas));
  if(editIndex===i) editIndex=-1;
  render();
+}
+
+
+function exportarPDF(){
+ if(!capturas.length) return alert("Sin datos");
+ const w = window.open("");
+ let h = "<h3>Reporte de Captura</h3><table border='1' cellpadding='5' cellspacing='0'><tr>";
+ Object.keys(capturas[0]).forEach(k=>h+="<th>"+k+"</th>");
+ h+="</tr>";
+ capturas.forEach(r=>{
+  h+="<tr>";
+  Object.values(r).forEach(v=>h+="<td>"+v+"</td>");
+  h+="</tr>";
+ });
+ h+="</table>";
+ w.document.write(h);
+ w.print();
 }
 
 </script>
