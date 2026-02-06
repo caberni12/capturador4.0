@@ -155,6 +155,8 @@ button{border:none;font-weight:700}
 
 <h2>📋 Capturador PRO</h2>
 
+<div class="total" id="totalizador">Total unidades: 0</div>
+
 <input id="operador" placeholder="Nombre del operador" oninput="previewIngreso()">
 
 <div class="field">
@@ -194,8 +196,6 @@ button{border:none;font-weight:700}
 <button class="warn" onclick="cancelarEdicion()">↩️ Cancelar edición</button>
 
 <div id="tabla"></div>
-<div class="total" id="totalizador">Total unidades: 0</div>
-
 <button class="success" onclick="finalizar()">📊 Finalizar y abrir Excel</button>
 <button class="secondary" onclick="exportarPDF()">📄 Descargar PDF</button>
 
